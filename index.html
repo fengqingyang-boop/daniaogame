@@ -93,13 +93,15 @@
         }
         .instructions-content {
             background: rgba(255,255,255,0.15);
-            padding: 30px;
+            padding: 20px 25px;
             border-radius: 15px;
-            max-width: 600px;
+            max-width: 800px;
+            max-height: 350px;
+            overflow-y: auto;
             text-align: left;
-            font-size: 18px;
-            line-height: 2;
-            margin: 20px;
+            font-size: 16px;
+            line-height: 1.8;
+            margin: 10px 20px;
         }
         .instructions-content li {
             margin: 10px 0;
@@ -249,17 +251,17 @@
         const shootCooldown = 200;
         
         const birdTypes = [
-            { type: 'blue', color: '#2196F3', points: 10, speed: 2, size: 30, poopChance: 0.003 },
-            { type: 'yellow', color: '#FFD54F', points: 20, speed: 3, size: 28, poopChance: 0.004 },
-            { type: 'green', color: '#66BB6A', points: 30, speed: 4.5, size: 26, poopChance: 0.002 },
-            { type: 'red', color: '#FF5252', points: 15, speed: 2.5, size: 32, poopChance: 0.005, special: 'invincible' },
-            { type: 'white', color: '#FFFFFF', points: 0, speed: 2, size: 34, poopChance: 0.001, special: 'forbidden' }
+            { type: 'blue', color: '#2196F3', points: 10, speed: 1, size: 30, poopChance: 0.001 },
+            { type: 'yellow', color: '#FFD54F', points: 20, speed: 1, size: 28, poopChance: 0.0012 },
+            { type: 'green', color: '#66BB6A', points: 30, speed: 1, size: 26, poopChance: 0.0007 },
+            { type: 'red', color: '#FF5252', points: 15, speed: 1, size: 32, poopChance: 0.0015, special: 'invincible' },
+            { type: 'white', color: '#FFFFFF', points: 0, speed: 1, size: 34, poopChance: 0.0004, special: 'forbidden' }
         ];
         
         function getDifficultyParams() {
-            const baseBirdRate = 0.025 + level * 0.003;
-            const birdRate = Math.min(baseBirdRate, 0.06);
-            const speedMultiplier = 1 + (level - 1) * 0.15;
+            const baseBirdRate = 0.008 + level * 0.001;
+            const birdRate = Math.min(baseBirdRate, 0.02);
+            const speedMultiplier = 1 + (level - 1) * 0.05;
             const timeBonus = Math.max(0, (level - 1) * 10);
             return { birdRate, speedMultiplier, timeBonus };
         }
