@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>射击小鸟 - 搞笑小游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        #gameContainer {
+            position: relative;
+            border: 4px solid #4A90A4;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.2);
+        }
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 60%, #8B4513 60%, #654321 100%);
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            pointer-events: none;
+        }
+        .ui-box {
+            background: rgba(255,255,255,0.8);
+            padding: 8px 15px;
+            border-radius: 8px;
+            border: 2px solid #4A90A4;
+        }
+        #startScreen, #gameOverScreen, #levelUpScreen, #instructionsScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 100;
+        }
+        h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+        }
+        h2 {
+            font-size: 36px;
+            margin-bottom: 15px;
+            color: #FFD700;
+        }
+        .btn {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: linear-gradient(180deg, #4CAF50 0%, #388E3C 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+        .btn-secondary {
+            background: linear-gradient(180deg, #2196F3 0%, #1976D2 100%);
+        }
+        .instructions-content {
+            background: rgba(255,255,255,0.15);
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            text-align: left;
+            font-size: 18px;
+            line-height: 2;
+            margin: 20px;
+        }
+        .instructions-content li {
+            margin: 10px 0;
+            padding-left: 10px;
+        }
+        .color-bird {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin: 0 5px;
+            vertical-align: middle;
+        }
+        .bird-red { background: #FF5252; }
+        .bird-blue { background: #2196F3; }
+        .bird-yellow { background: #FFD54F; }
+        .bird-green { background: #66BB6A; }
+        .bird-white { background: #FFFFFF; border: 2px solid #999; }
+        .score-display {
+            font-size: 28px;
+            margin: 15px 0;
+            color: #FFD700;
+        }
+        .hidden {
+            display: none !important;
+        }
+        #invincibleIndicator {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 100, 100, 0.9);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 16px;
+            display: none;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="900" height="600"></canvas>
+        <div id="ui">
+            <div class="ui-box">
+                关卡: <span id="levelDisplay">1</span>
+            </div>
+            <div class="ui-box">
+                分数: <span id="scoreDisplay">0</span> / <span id="targetDisplay">30</span>
+            </div>
+            <div class="ui-box">
+                时间: <span id="timeDisplay">120</span>秒
+            </div>
+        </div>
+        <div id="invincibleIndicator">
+            🔥 无敌模式启动！不怕鸟屎！ 🔥
+        </div>
+        
+        <div id="startScreen">
+            <h1>🐦 射击小鸟 🎯</h1>
+            <button class="btn" onclick="showInstructions()">📖 游戏说明</button>
+            <button class="btn btn-secondary" onclick="startGame()">🎮 开始游戏</button>
+        </div>
+        
+        <div id="instructionsScreen" class="hidden">
+            <h2>📖 游戏说明</h2>
+            <div class="instructions-content">
+                <ul>
+                    <li><strong>⌨️ 操作方式：</strong></li>
+                    <li>&nbsp;&nbsp;&nbsp;• 左右方向键 ← → 或 A/D 键：移动角色</li>
+                    <li>&nbsp;&nbsp;&nbsp;• 空格键：发射子弹射击小鸟</li>
+                    <li>&nbsp;&nbsp;&nbsp;• ESC键：暂停游戏</li>
+                    <li><strong>🎯 游戏目标：</strong></li>
+                    <li>&nbsp;&nbsp;&nbsp;• 在倒计时结束前达到目标分数，进入下一关</li>
+                    <li><strong>🐦 小鸟说明：</strong></li>
+                    <li>&nbsp;&nbsp;&nbsp;• <span class="color-bird bird-blue"></span>蓝色鸟：普通鸟，10分</li>
+                    <li>&nbsp;&nbsp;&nbsp;• <span class="color-bird bird-yellow"></span>黄色鸟：中等，20分</li>
+                    <li>&nbsp;&nbsp;&nbsp;• <span class="color-bird bird-green"></span>绿色鸟：快速，30分</li>
+                    <li>&nbsp;&nbsp;&nbsp;• <span class="color-bird bird-red"></span><span style="color:#FF5252;font-weight:bold;">红色鸟</span>：打中获得<span style="color:#FFD700;font-weight:bold;">无敌模式</span>（不怕鸟屎！）</li>
+                    <li>&nbsp;&nbsp;&nbsp;• <span class="color-bird bird-white"></span><span style="color:#FFFFFF;font-weight:bold;">白色鸟</span>：<span style="color:#FF5252;font-weight:bold;">绝对不能打！</span>打了游戏结束！</li>
+                    <li><strong>💩 注意事项：</strong></li>
+                    <li>&nbsp;&nbsp;&nbsp;• 小鸟会随机拉屎，被屎砸中则游戏结束</li>
+                    <li>&nbsp;&nbsp;&nbsp;• 只有无敌模式（打中红色鸟）时不怕鸟屎</li>
+                </ul>
+            </div>
+            <button class="btn" onclick="showStartScreen()">返回</button>
+            <button class="btn btn-secondary" onclick="startGame()">🎮 开始游戏</button>
+        </div>
+        
+        <div id="gameOverScreen" class="hidden">
+            <h1>💀 游戏结束</h1>
+            <div class="score-display">最终分数: <span id="finalScore">0</span></div>
+            <div class="score-display">到达关卡: <span id="finalLevel">1</span></div>
+            <div id="gameOverReason" style="font-size: 20px; margin: 20px; color: #FF9999;"></div>
+            <button class="btn" onclick="restartGame()">🔄 重新开始</button>
+            <button class="btn btn-secondary" onclick="showStartScreen()">🏠 返回主菜单</button>
+        </div>
+        
+        <div id="levelUpScreen" class="hidden">
+            <h2>🎉 恭喜过关！</h2>
+            <div class="score-display">进入第 <span id="nextLevelDisplay">2</span> 关</div>
+            <div class="score-display">本关分数: <span id="levelScoreDisplay">0</span></div>
+            <button class="btn" onclick="nextLevel()">继续游戏 ➡️</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameState = 'menu';
+        let level = 1;
+        let score = 0;
+        let targetScore = 30;
+        let timeLeft = 120;
+        let invincible = false;
+        let invincibleTimer = 0;
+        let gameOverReason = '';
+        
+        const player = {
+            x: 450,
+            y: 520,
+            width: 50,
+            height: 60,
+            speed: 6,
+            direction: 1
+        };
+        
+        const bullets = [];
+        const birds = [];
+        const poops = [];
+        const particles = [];
+        
+        const keys = {
+            left: false,
+            right: false,
+            space: false
+        };
+        
+        let lastShotTime = 0;
+        const shootCooldown = 200;
+        
+        const birdTypes = [
+            { type: 'blue', color: '#2196F3', points: 10, speed: 2, size: 30, poopChance: 0.003 },
+            { type: 'yellow', color: '#FFD54F', points: 20, speed: 3, size: 28, poopChance: 0.004 },
+            { type: 'green', color: '#66BB6A', points: 30, speed: 4.5, size: 26, poopChance: 0.002 },
+            { type: 'red', color: '#FF5252', points: 15, speed: 2.5, size: 32, poopChance: 0.005, special: 'invincible' },
+            { type: 'white', color: '#FFFFFF', points: 0, speed: 2, size: 34, poopChance: 0.001, special: 'forbidden' }
+        ];
+        
+        function getDifficultyParams() {
+            const baseBirdRate = 0.025 + level * 0.003;
+            const birdRate = Math.min(baseBirdRate, 0.06);
+            const speedMultiplier = 1 + (level - 1) * 0.15;
+            const timeBonus = Math.max(0, (level - 1) * 10);
+            return { birdRate, speedMultiplier, timeBonus };
+        }
+        
+        function spawnBird() {
+            const { birdRate, speedMultiplier } = getDifficultyParams();
+            
+            if (Math.random() < birdRate) {
+                const fromLeft = Math.random() < 0.5;
+                
+                let typeIndex;
+                const rand = Math.random();
+                if (level >= 3 && rand < 0.08) {
+                    typeIndex = 4;
+                } else if (rand < 0.18) {
+                    typeIndex = 3;
+                } else if (rand < 0.45) {
+                    typeIndex = 2;
+                } else if (rand < 0.75) {
+                    typeIndex = 1;
+                } else {
+                    typeIndex = 0;
+                }
+                
+                const birdType = birdTypes[typeIndex];
+                
+                birds.push({
+                    x: fromLeft ? -birdType.size : canvas.width + birdType.size,
+                    y: 50 + Math.random() * 200,
+                    width: birdType.size * 1.5,
+                    height: birdType.size,
+                    speed: birdType.speed * speedMultiplier * (fromLeft ? 1 : -1),
+                    type: birdType.type,
+                    color: birdType.color,
+                    points: birdType.points,
+                    poopChance: birdType.poopChance,
+                    special: birdType.special || null,
+                    wingAngle: 0,
+                    frameCount: 0
+                });
+            }
+        }
+        
+        function spawnPoop(bird) {
+            if (Math.random() < bird.poopChance) {
+                poops.push({
+                    x: bird.x + bird.width / 2 - 6,
+                    y: bird.y + bird.height,
+                    width: 12,
+                    height: 16,
+                    speedY: 3 + level * 0.3
+                });
+            }
+        }
+        
+        function shoot() {
+            const now = Date.now();
+            if (now - lastShotTime >= shootCooldown) {
+                bullets.push({
+                    x: player.x + player.width / 2 - 4,
+                    y: player.y - 10,
+                    width: 8,
+                    height: 20,
+                    speedY: 12
+                });
+                lastShotTime = now;
+            }
+        }
+        
+        function createParticles(x, y, color, count = 10) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    life: 30,
+                    color: color,
+                    size: 3 + Math.random() * 4
+                });
+            }
+        }
+        
+        function checkCollision(a, b) {
+            return a.x < b.x + b.width &&
+                   a.x + a.width > b.x &&
+                   a.y < b.y + b.height &&
+                   a.y + a.height > b.y;
+        }
+        
+        function update() {
+            if (gameState !== 'playing') return;
+            
+            if (keys.left && player.x > 0) {
+                player.x -= player.speed;
+                player.direction = -1;
+            }
+            if (keys.right && player.x < canvas.width - player.width) {
+                player.x += player.speed;
+                player.direction = 1;
+            }
+            if (keys.space) {
+                shoot();
+            }
+            
+            spawnBird();
+            
+            for (let i = birds.length - 1; i >= 0; i--) {
+                const bird = birds[i];
+                bird.x += bird.speed;
+                bird.frameCount++;
+                bird.wingAngle = Math.sin(bird.frameCount * 0.3) * 0.5;
+                
+                spawnPoop(bird);
+                
+                if ((bird.speed > 0 && bird.x > canvas.width + 50) || 
+                    (bird.speed < 0 && bird.x < -50)) {
+                    birds.splice(i, 1);
+                }
+            }
+            
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                bullet.y -= bullet.speedY;
+                
+                if (bullet.y < -30) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+                
+                for (let j = birds.length - 1; j >= 0; j--) {
+                    if (checkCollision(bullet, birds[j])) {
+                        const bird = birds[j];
+                        
+                        if (bird.special === 'forbidden') {
+                            gameOverReason = '你打中了白色的保护鸟！游戏结束！';
+                            endGame();
+                            return;
+                        }
+                        
+                        if (bird.special === 'invincible') {
+                            invincible = true;
+                            invincibleTimer = 360;
+                            document.getElementById('invincibleIndicator').style.display = 'block';
+                        }
+                        
+                        score += bird.points;
+                        createParticles(bird.x + bird.width/2, bird.y + bird.height/2, bird.color, 15);
+                        
+                        bullets.splice(i, 1);
+                        birds.splice(j, 1);
+                        
+                        updateUI();
+                        
+                        if (score >= targetScore) {
+                            levelUp();
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            for (let i = poops.length - 1; i >= 0; i--) {
+                const poop = poops[i];
+                poop.y += poop.speedY;
+                
+                if (poop.y > canvas.height) {
+                    poops.splice(i, 1);
+                    continue;
+                }
+                
+                if (!invincible && checkCollision(poop, player)) {
+                    gameOverReason = '被鸟屎砸中了！游戏结束！';
+                    endGame();
+                    return;
+                }
+            }
+            
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2;
+                p.life--;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+            
+            if (invincible) {
+                invincibleTimer--;
+                if (invincibleTimer <= 0) {
+                    invincible = false;
+                    document.getElementById('invincibleIndicator').style.display = 'none';
+                }
+            }
+        }
+        
+        function drawPlayer() {
+            ctx.save();
+            ctx.translate(player.x + player.width/2, player.y + player.height/2);
+            
+            if (invincible && Math.floor(Date.now() / 100) % 2 === 0) {
+                ctx.globalAlpha = 0.6;
+            }
+            
+            ctx.fillStyle = '#4169E1';
+            ctx.fillRect(-player.width/2, -player.height/4, player.width, player.height/2);
+            
+            ctx.fillStyle = '#FFDAB9';
+            ctx.beginPath();
+            ctx.arc(0, -player.height/2 + 15, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#333';
+            ctx.fillRect(-5, -player.height/2 + 10, 3, 3);
+            ctx.fillRect(2, -player.height/2 + 10, 3, 3);
+            
+            ctx.fillStyle = '#333';
+            ctx.fillRect(-player.width/2 + 5, player.height/4, 15, player.height/4);
+            ctx.fillRect(player.width/2 - 20, player.height/4, 15, player.height/4);
+            
+            ctx.save();
+            if (player.direction < 0) {
+                ctx.scale(-1, 1);
+            }
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(10, -15, 30, 8);
+            ctx.fillStyle = '#333';
+            ctx.fillRect(35, -13, 8, 4);
+            ctx.restore();
+            
+            ctx.restore();
+        }
+        
+        function drawBird(bird) {
+            ctx.save();
+            ctx.translate(bird.x + bird.width/2, bird.y + bird.height/2);
+            
+            if (bird.speed < 0) {
+                ctx.scale(-1, 1);
+            }
+            
+            ctx.fillStyle = bird.color;
+            if (bird.type === 'white') {
+                ctx.strokeStyle = '#999';
+                ctx.lineWidth = 2;
+            }
+            
+            ctx.beginPath();
+            ctx.ellipse(0, 0, bird.width/2, bird.height/2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            if (bird.type === 'white') ctx.stroke();
+            
+            ctx.save();
+            ctx.rotate(bird.wingAngle);
+            ctx.fillStyle = bird.type === 'white' ? '#EEE' : adjustColor(bird.color, -30);
+            ctx.beginPath();
+            ctx.ellipse(-5, -10, 12, 8, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            
+            ctx.fillStyle = bird.type === 'white' ? '#EEE' : adjustColor(bird.color, 20);
+            ctx.beginPath();
+            ctx.ellipse(bird.width/2 - 8, 0, 10, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(8, -3, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(9, -3, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#FF9800';
+            ctx.beginPath();
+            ctx.moveTo(bird.width/2, 0);
+            ctx.lineTo(bird.width/2 + 8, 2);
+            ctx.lineTo(bird.width/2, 4);
+            ctx.closePath();
+            ctx.fill();
+            
+            if (bird.special === 'forbidden') {
+                ctx.strokeStyle = '#FF0000';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(0, 0, Math.max(bird.width, bird.height) / 2 + 5, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(-15, -15);
+                ctx.lineTo(15, 15);
+                ctx.moveTo(15, -15);
+                ctx.lineTo(-15, 15);
+                ctx.stroke();
+            }
+            
+            if (bird.special === 'invincible') {
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = 2;
+                const pulseSize = Math.sin(Date.now() * 0.01) * 3;
+                ctx.beginPath();
+                ctx.arc(0, 0, Math.max(bird.width, bird.height) / 2 + 8 + pulseSize, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+        
+        function adjustColor(color, amount) {
+            const hex = color.replace('#', '');
+            const r = Math.max(0, Math.min(255, parseInt(hex.substr(0, 2), 16) + amount));
+            const g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
+            const b = Math.max(0, Math.min(255, parseInt(hex.substr(4, 2), 16) + amount));
+            return `rgb(${r},${g},${b})`;
+        }
+        
+        function drawBullet(bullet) {
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.ellipse(bullet.x + bullet.width/2, bullet.y + bullet.height/2, bullet.width/2, bullet.height/2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#FFF8DC';
+            ctx.beginPath();
+            ctx.ellipse(bullet.x + bullet.width/2, bullet.y + 3, bullet.width/3, bullet.height/4, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function drawPoop(poop) {
+            ctx.fillStyle = '#5D4037';
+            ctx.beginPath();
+            ctx.moveTo(poop.x + poop.width/2, poop.y);
+            ctx.quadraticCurveTo(poop.x + poop.width + 2, poop.y + poop.height/2, poop.x + poop.width/2, poop.y + poop.height);
+            ctx.quadraticCurveTo(poop.x - 2, poop.y + poop.height/2, poop.x + poop.width/2, poop.y);
+            ctx.fill();
+            
+            ctx.fillStyle = '#795548';
+            ctx.beginPath();
+            ctx.ellipse(poop.x + poop.width/2, poop.y + 4, 3, 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function drawParticle(p) {
+            ctx.globalAlpha = p.life / 30;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+        
+        function drawBackground() {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.6);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#B0E0E6');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height * 0.6);
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            drawCloud(100, 80, 1);
+            drawCloud(400, 120, 1.3);
+            drawCloud(700, 60, 0.9);
+            
+            const groundGradient = ctx.createLinearGradient(0, canvas.height * 0.6, 0, canvas.height);
+            groundGradient.addColorStop(0, '#7CB342');
+            groundGradient.addColorStop(0.3, '#558B2F');
+            groundGradient.addColorStop(1, '#33691E');
+            ctx.fillStyle = groundGradient;
+            ctx.fillRect(0, canvas.height * 0.6, canvas.width, canvas.height * 0.4);
+            
+            ctx.fillStyle = '#689F38';
+            for (let i = 0; i < canvas.width; i += 30) {
+                const grassHeight = 8 + Math.sin(i * 0.1 + Date.now() * 0.002) * 4;
+                ctx.beginPath();
+                ctx.moveTo(i, canvas.height * 0.6);
+                ctx.lineTo(i + 5, canvas.height * 0.6 - grassHeight);
+                ctx.lineTo(i + 10, canvas.height * 0.6);
+                ctx.fill();
+            }
+        }
+        
+        function drawCloud(x, y, scale) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            ctx.beginPath();
+            ctx.arc(0, 0, 30, 0, Math.PI * 2);
+            ctx.arc(25, -10, 25, 0, Math.PI * 2);
+            ctx.arc(50, 0, 30, 0, Math.PI * 2);
+            ctx.arc(25, 10, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawBackground();
+            
+            drawPlayer();
+            
+            birds.forEach(drawBird);
+            bullets.forEach(drawBullet);
+            poops.forEach(drawPoop);
+            particles.forEach(drawParticle);
+        }
+        
+        function updateUI() {
+            document.getElementById('levelDisplay').textContent = level;
+            document.getElementById('scoreDisplay').textContent = score;
+            document.getElementById('targetDisplay').textContent = targetScore;
+            document.getElementById('timeDisplay').textContent = timeLeft;
+        }
+        
+        function levelUp() {
+            gameState = 'levelUp';
+            document.getElementById('nextLevelDisplay').textContent = level + 1;
+            document.getElementById('levelScoreDisplay').textContent = score;
+            document.getElementById('levelUpScreen').classList.remove('hidden');
+        }
+        
+        function nextLevel() {
+            level++;
+            score = 0;
+            targetScore = 30 + (level - 1) * 15;
+            const { timeBonus } = getDifficultyParams();
+            timeLeft = 120 + timeBonus;
+            
+            bullets.length = 0;
+            birds.length = 0;
+            poops.length = 0;
+            particles.length = 0;
+            
+            invincible = false;
+            invincibleTimer = 0;
+            document.getElementById('invincibleIndicator').style.display = 'none';
+            
+            player.x = canvas.width / 2 - player.width / 2;
+            
+            document.getElementById('levelUpScreen').classList.add('hidden');
+            
+            updateUI();
+            gameState = 'playing';
+        }
+        
+        function endGame() {
+            gameState = 'gameOver';
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalLevel').textContent = level;
+            document.getElementById('gameOverReason').textContent = gameOverReason;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+            document.getElementById('invincibleIndicator').style.display = 'none';
+        }
+        
+        function showInstructions() {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('instructionsScreen').classList.remove('hidden');
+        }
+        
+        function showStartScreen() {
+            document.getElementById('instructionsScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            document.getElementById('startScreen').classList.remove('hidden');
+            gameState = 'menu';
+        }
+        
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('instructionsScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            
+            level = 1;
+            score = 0;
+            targetScore = 30;
+            timeLeft = 120;
+            invincible = false;
+            invincibleTimer = 0;
+            
+            bullets.length = 0;
+            birds.length = 0;
+            poops.length = 0;
+            particles.length = 0;
+            
+            player.x = canvas.width / 2 - player.width / 2;
+            
+            updateUI();
+            gameState = 'playing';
+        }
+        
+        function restartGame() {
+            startGame();
+        }
+        
+        let timerInterval = null;
+        
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (gameState === 'playing') {
+                    timeLeft--;
+                    updateUI();
+                    if (timeLeft <= 0) {
+                        gameOverReason = '时间到了！没有达到目标分数！';
+                        endGame();
+                    }
+                }
+            }, 1000);
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+                keys.left = true;
+            }
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+                keys.right = true;
+            }
+            if (e.code === 'Space') {
+                e.preventDefault();
+                keys.space = true;
+            }
+            if (e.code === 'Escape') {
+                if (gameState === 'playing') {
+                    gameState = 'paused';
+                } else if (gameState === 'paused') {
+                    gameState = 'playing';
+                }
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+                keys.left = false;
+            }
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+                keys.right = false;
+            }
+            if (e.code === 'Space') {
+                keys.space = false;
+            }
+        });
+        
+        startTimer();
+        gameLoop();
+    </script>
+</body>
+</html>
